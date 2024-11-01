@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>录音</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      text-align: center;
+      margin-top: 50px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 18px;
+    }
+    audio {
+      display: block;
+      margin: 20px auto;
+    }
+    #recordingsList {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button id="back">返回</button>
+    <h1>录音页面</h1>
+    <button id="startRecord">开始录音</button>
+    <button id="stopRecord" disabled>停止录音</button>
+    <!-- <button id="saveRecord" disabled>保存录音</button> -->
+
+    <audio id="audioPlayback" controls></audio>
+    <div id="recordingsList"></div>
+  </div>
+
+  <script>
+    let mediaRecorder;
+    let recordedChunks = [];
+    // 返回按钮
+    document.getElementById('back').addEventListener('click', () => {
+      window.location.href = './index.html';
+    });
+    
+    document.getElementById('startRecord').addEventListener('click', async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'audio/wav' });
+        const audioURL = URL.createObjectURL(blob);
+        document.getElementById('audioPlayback').src = audioURL;
+        //document.getElementById('saveRecord').disabled = false;
+      };
+
+      mediaRecorder.start();
+      document.getElementById('startRecord').disabled = true;
+      document.getElementById('stopRecord').disabled = false;
+    });
+
+    document.getElementById('stopRecord').addEventListener('click', () => {
+      mediaRecorder.stop();
+      document.getElementById('startRecord').disabled = false;
+      document.getElementById('stopRecord').disabled = true;
+    });
+
+    // document.getElementById('saveRecord').addEventListener('click', async () => {
+    //   const blob = new Blob(recordedChunks, { type: 'audio/wav' });
+    //   const arrayBuffer = await blob.arrayBuffer();
+    //   const buffer = Buffer.from(arrayBuffer);
+
+    //   const filePath = await window.electronAPI.saveAudioFile(buffer);
+    //   if (filePath) {
+    //     const recordingsList = document.getElementById('recordingsList');
+    //     const listItem = document.createElement('p');
+    //     listItem.textContent = `保存的文件: ${filePath}`;
+    //     recordingsList.appendChild(listItem);
+    //   }
+
+    //   recordedChunks = [];  // 重置录音数据
+    //   document.getElementById('saveRecord').disabled = true;
+    // });
+  </script>
+</body>
+</html>
