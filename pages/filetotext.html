@@ -50,6 +50,7 @@
     //选择文件按钮
     let selectedFilePath = null;
     document.getElementById('chooseFile').addEventListener('click', async () => {
+      document.getElementById('status').textContent = "请选择格式为pcm的录音文件"
       selectedFilePath = await window.electronAPI.selectFile();
       if (selectedFilePath) {
         document.getElementById('status').textContent = `已选择文件: ${selectedFilePath}`;
@@ -63,16 +64,8 @@
     document.getElementById('startConvert').addEventListener('click', async () => {
       document.getElementById('status').textContent = '正在转换...';
       const result = await window.electronAPI.transcribeFile(selectedFilePath);
-
-      if (result && result.text) {
-        document.getElementById('transcribedText').value = result.text;
-        document.getElementById('status').textContent = '转换完成';
-        document.getElementById('saveText').disabled = false;
-      } else {
-        document.getElementById('status').textContent = '转换失败';
-      }
     });
-
+     
     //保存文本
     document.getElementById('saveText').addEventListener('click', async () => {
       const text = document.getElementById('transcribedText').value;
@@ -83,11 +76,22 @@
       }
     });
 
-    // 接收来自主进程的消息
-    const { ipcRenderer } = require('electron');
-    ipcRenderer.on('update-message', (event, message) => {
-        const messageElement = document.getElementById('status');
-        messageElement.textContent = message;
+    // 接收来自 WebSocket 的转录消息
+    const transcriptionBox = document.getElementById('transcribedText');
+    let transcriptionText = '';
+    window.electronAPI.onNewMessage((message) => {
+      if (message.type === 'error') {
+        document.getElementById('status').textContent = '转换失败';
+      }
+      else{
+        if (message.type === '0') {
+          document.getElementById('status').textContent = '转换完成';
+        }
+        transcriptionText += message.text + '\n';
+        transcriptionBox.value = transcriptionText; // 更新文本框内容
+        transcriptionBox.scrollTop = transcriptionBox.scrollHeight; // 滚动到最新消息
+        document.getElementById('saveText').disabled = false;
+      }
     });
   </script>
 </body>

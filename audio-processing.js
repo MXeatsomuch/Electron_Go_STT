@@ -4,25 +4,15 @@ const { console } = require('inspector');
 const ffmpegPath = require('ffmpeg-static');
 const ffmpeg = require('fluent-ffmpeg');
 ffmpeg.setFfmpegPath(ffmpegPath);
-console.log(ffmpeg);
 const { spawn } = require('child_process');
 
 const outputFile = 'tmp/output.pcm'; // 输出的 PCM 文件
 
-async function ConvertFormat(filePath) {
+async function convertFormat(filePath) {
     console.log("检查文件格式")
     const ext = path.extname(filePath).toLowerCase();
-    if (ext != ".wav" && ext!= ".pcm") {
+    if (ext!= ".pcm") {
       console.error("文件格式不支持")
-    }
-    if (ext == ".wav") {
-      console.log("将.wav转换成pcm文件")
-      try {
-        await convertWavToPcm(filePath, outputFile);
-        console.log('文件转换成功');
-      } catch (err) {
-        console.error('文件转换失败', err);
-      }
     }
 }
 
@@ -88,4 +78,4 @@ async function ConvertFormat(filePath) {
     });
   }
 
-module.exports = {ConvertFormat};
+module.exports = {convertFormat};
