@@ -5,29 +5,11 @@ const fs = require('fs');
 const audioprocess = require('./audio-processing')
 const websocket = require('./websocket')
 const recorder = require('node-record-lpcm16');
-/*
-// 系统配置
-const config = {
-  hostUrl: "wss://rtasr.xfyun.cn/v1/ws",
-  appid: "944aa7dd",
-  apiKey: "99e1e0eebdfdabedb761ee0e2f6e26c4",
-  highWaterMark: 1280
-}
-
-// 鉴权签名
-function getSigna(ts) {
-  let md5 = CryptoJS.MD5(config.appid + ts).toString()
-  let sha1 = CryptoJS.HmacSHA1(md5, config.apiKey)
-  let base64 = CryptoJS.enc.Base64.stringify(sha1)
-  return encodeURIComponent(base64)
-}
-*/
 
 const options = {
   sampleRate: 16000, // 采样率16kHz
   channels: 1,        // 单声道
   bitDepth: 16,       // 位长16位
-  recordProgram: "sox"
 };
 
 let mainWindow;
@@ -50,40 +32,40 @@ function createWindow() {
   });
 }
 
-function createRecordWindow() {
-  recordWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
+// function createRecordWindow() {
+//   recordWindow = new BrowserWindow({
+//     width: 800,
+//     height: 600,
+//     webPreferences: {
+//       preload: path.join(__dirname, 'preload.js'),
+//       contextIsolation: true,
+//       nodeIntegration: false
+//     }
+//   });
 
-  recordWindow.loadFile('pages/record.html');
-  recordWindow.on('closed', () => {
-    recordWindow = null;
-  });
-}
+//   recordWindow.loadFile('pages/record.html');
+//   recordWindow.on('closed', () => {
+//     recordWindow = null;
+//   });
+// }
 
 // 创建用于展示转换转态的新窗口
-function createDisplayStatusWindow() {
-  displayWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
+// function createDisplayStatusWindow() {
+//   displayWindow = new BrowserWindow({
+//     width: 800,
+//     height: 600,
+//     webPreferences: {
+//       preload: path.join(__dirname, 'preload.js'),
+//       contextIsolation: true,
+//       nodeIntegration: false
+//     }
+//   });
 
-  displayWindow.loadFile('pages/filetotext.html');
-  displayWindow.on('closed', () => {
-    displayWindow = null;
-  });
-}
+//   displayWindow.loadFile('pages/filetotext.html');
+//   displayWindow.on('closed', () => {
+//     displayWindow = null;
+//   });
+// }
 
 
 // app.whenReady().then(createWindow);
@@ -126,32 +108,39 @@ ipcMain.on('start-recording', () => {
   mic.start();
 });
 
+
 // 停止录音并保存
 ipcMain.on('stop-recording', async (event) => {
   console.log('停止录音...');
+
   if (mic) {
     mic.stop();
-    mic = null;
-  }
+    // 监听 'close' 事件，确保录音进程已完全停止
+    mic.stream().on('close', async () => {
+      console.log('录音进程已关闭');
+      // 选择保存路径
+      const { canceled, filePath } = await dialog.showSaveDialog({
+        title: '保存录音',
+        defaultPath: 'recording.pcm',
+        filters: [{ name: 'PCM Audio', extensions: ['pcm'] }]
+      });
 
-  // 选择保存路径
-  const { canceled, filePath } = await dialog.showSaveDialog({
-    title: '保存录音',
-    defaultPath: 'recording.pcm',
-    filters: [{ name: 'PCM Audio', extensions: ['pcm'] }]
-  });
-
-  if (!canceled && filePath) {
-    const buffer = Buffer.concat(audioChunks);
-    fs.writeFile(filePath, buffer, (err) => {
-      if (err) {
-        console.error('无法保存录音文件:', err);
-        event.reply('recording-saved', { success: false, message: err.message });
-      } else {
-        console.log('录音已保存到:', filePath);
-        event.reply('recording-saved', { success: true, filePath });
+      if (!canceled && filePath) {
+        const buffer = Buffer.concat(audioChunks);
+        fs.writeFile(filePath, buffer, (err) => {
+          if (err) {
+            console.error('无法保存录音文件:', err);
+            event.reply('recording-saved', { success: false, message: err.message });
+          } else {
+            console.log('录音已保存到:', filePath);
+            event.reply('recording-saved', { success: true, filePath: filePath, audio: audioChunks });
+          }
+        });
       }
     });
+
+    // 清空录音对象
+    mic = null;
   }
 });
 
@@ -183,19 +172,19 @@ ipcMain.handle('select-save-path', async () => {
 });
 
 // 处理保存录音文件的请求
-ipcMain.handle('save-audio-file', async (event, audioBuffer) => {
-  const { filePath } = await dialog.showSaveDialog({
-    title: "保存录音文件",
-    filters: [{ name: "Audio", extensions: ["pcm"] }]
-  });
+// ipcMain.handle('save-audio-file', async (event, audioBuffer) => {
+//   const { filePath } = await dialog.showSaveDialog({
+//     title: "保存录音文件",
+//     filters: [{ name: "Audio", extensions: ["pcm"] }]
+//   });
 
-  if (filePath) {
-    const save_buffer = Buffer.from(audioBuffer);
-    fs.writeFileSync(filePath, save_buffer);
-    return filePath;
-  }
-  return null;
-});
+//   if (filePath) {
+//     const save_buffer = Buffer.from(audioBuffer);
+//     fs.writeFileSync(filePath, save_buffer);
+//     return filePath;
+//   }
+//   return null;
+// });
 
 // 处理文件转文字的 WebSocket 请求
 //require('./websocket.js');

@@ -32,7 +32,7 @@
     <h1>录音页面</h1>
     <button id="startRecord">开始录音</button>
     <button id="stopRecord" disabled>停止录音</button>
-    <button id="saveRecord" disabled>保存录音</button>
+    <!-- <button id="saveRecord" disabled>保存录音</button> -->
     <div id="status"></div>
     <audio id="audioPlayback" controls></audio>
     <div id="recordingsList"></div>
@@ -49,63 +49,24 @@
     // 开始录音
     document.getElementById('startRecord').addEventListener('click', async () => {
       window.electronAPI.startRecording();
-      // const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // mediaRecorder = new MediaRecorder(stream);
-
-      // mediaRecorder.ondataavailable = (event) => {
-      //   if (event.data.size > 0) {
-      //     recordedChunks.push(event.data);
-      //   }
-      // };
-
-      // mediaRecorder.onstop = () => {
-      //   const blob = new Blob(recordedChunks, { type: 'audio/wav' });
-      //   const audioURL = URL.createObjectURL(blob);
-      //   document.getElementById('audioPlayback').src = audioURL;
-      //   document.getElementById('saveRecord').disabled = false;
-      // };
-
-      // mediaRecorder.start();
       document.getElementById('startRecord').disabled = true;
       document.getElementById('stopRecord').disabled = false;
+      document.getElementById('audioPlayback').src = null;
     });
     
     // 停止录音
+    let isRecording = true;
     document.getElementById('stopRecord').addEventListener('click', () => {
       window.electronAPI.stopRecording();
-      //mediaRecorder.stop();
       document.getElementById('startRecord').disabled = false;
       document.getElementById('stopRecord').disabled = true;
     });
-    // 保存录音
-    document.getElementById('saveRecord').addEventListener('click', async () => {
-      document.getElementById('status').textContent = '正在保存...';
-      const blob = new Blob(recordedChunks, { type: 'audio/wav' });
-      const arrayBuffer = await blob.arrayBuffer();
-      buffer = convertWavToPcm(arrayBuffer);
-      
-      //const save_buffer = Buffer.from(buffer);
-      const filePath = await window.electronAPI.saveAudioFile(buffer);
-      if (filePath) {
-        const recordingsList = document.getElementById('recordingsList');
-        const listItem = document.createElement('p');
-        listItem.textContent = `保存的文件: ${filePath}`;
-        recordingsList.appendChild(listItem);
-      }
 
-      recordedChunks = [];  // 重置录音数据
-      document.getElementById('saveRecord').disabled = true;
-      document.getElementById('status').textContent = '保存成功';
-    });
-
-    window.electronAPI.onRecordingSaved((event, result) => {
-      if (result.success) {
-        const savedRecordingsDiv = document.getElementById('savedRecordings');
-        const newRecording = document.createElement('p');
-        newRecording.textContent = `录音已保存到: ${result.filePath}`;
-        savedRecordingsDiv.appendChild(newRecording);
-      } else {
-        alert('录音保存失败: ' + result.message);
+    window.electronAPI.onRecordingSaved((data) => {
+      if (data.success) {
+        const blob = new Blob(data.audio, { type: 'audio/wav' });
+        const audioURL = URL.createObjectURL(blob);
+        document.getElementById('audioPlayback').src = audioURL;
       }
     });
 
@@ -130,21 +91,7 @@
       }
       return new Int16Array(samples).buffer;
     }
-
-    // function savePcmSamples(samples) {
-    //   // 创建一个 Blob 对象，包含 PCM 数据
-    //   const buffer = new Int16Array(samples).buffer;
-    //   const blob = new Blob([buffer], { type: 'audio/pcm' });
-
-    //   // 创建一个 URL 来访问 Blob
-    //   const audioUrl = URL.createObjectURL(blob);
-
-    //   // 你可以下载或播放这个 Blob
-    //   const a = document.createElement('a');
-    //   a.href = audioUrl;
-    //   a.download = 'recording.pcm';
-    //   a.click();
-    // }
+    
   </script>
 </body>
 </html>

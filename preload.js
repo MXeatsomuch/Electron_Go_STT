@@ -1,15 +1,12 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  saveAudioFile: (audioBuffer) => ipcRenderer.invoke('save-audio-file', audioBuffer),
-  selectFile: () => ipcRenderer.invoke('select-file'),
-  saveTextFile: (text) => ipcRenderer.invoke('save-text', text),
-  transcribeFile: (filePath) => ipcRenderer.invoke('transcribe-file', filePath),
-
-  startRecording: () => ipcRenderer.send('start-recording'),
-  stopRecording: () => ipcRenderer.send('stop-recording'),
-  onRecordingSaved: (callback) => ipcRenderer.on('recording-saved', callback),
-
-  onNewMessage: (callback) => ipcRenderer.on('new-message', (event, msg) => callback(msg)),
-  saveMessages: async (messages) => await ipcRenderer.invoke('save-messages', messages)
+  //saveAudioFile: (audioBuffer) => ipcRenderer.invoke('save-audio-file', audioBuffer),
+  selectFile: () => ipcRenderer.invoke('select-file'), //filetotext.html 中选择录音文件
+  onNewMessage: (callback) => ipcRenderer.on('new-message', (event, msg) => callback(msg)), //filetotext.html 中实时接收数据
+  saveTextFile: (text) => ipcRenderer.invoke('save-text', text), //main.js还未实现
+  transcribeFile: (filePath) => ipcRenderer.invoke('transcribe-file', filePath),//filetotext.html 中将录音文件转为文字
+  startRecording: () => ipcRenderer.send('start-recording'), //record.html 中开始录音
+  stopRecording: () => ipcRenderer.send('stop-recording'), //record.html 中停止录音
+  onRecordingSaved: (callback) => ipcRenderer.on('recording-saved', (event, data) => callback(data)) //record.html 中接收保存录音文件用于播放
 });
