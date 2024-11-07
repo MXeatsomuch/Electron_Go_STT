@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>录音与实时转文字</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -34,11 +35,11 @@
     });
 
     document.getElementById('file_to_text').addEventListener('click', () => {
-      window.location.href = './filetotext.html';
+      window.location.href = './file-stt.html';
     });
 
     document.getElementById('realtime').addEventListener('click', () => {
-      alert('实时转文字功能未实现');
+      window.location.href = './realtime-stt.html';
     });
 
 

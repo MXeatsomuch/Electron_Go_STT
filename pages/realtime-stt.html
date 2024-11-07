@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>录音模块 - Electron</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="container">
+    <h1>实时语音识别</h1>
+    <div class="back">
+        <button id="backBtn">返回</button>
+    </div>
+    <!-- 状态显示 -->
+    <div class="status-area">
+      <p id="statusDisplay">等待转写 </p>
+    </div>
+    <!-- 文本框 -->
+    <div class="text-box">
+      <label for="inputText" style="font-size: 14px;">转写内容:</label>
+      <textarea id="inputText" rows="8" readonly></textarea>
+    </div>
+
+    <!-- 录音模块 -->
+    <div class="recorder">
+      <div class="waveform-container">
+        <audio id="audioPlayback" controls></audio>
+        <!-- <div id="waveform"></div> 录音波形展示 -->
+        <span id="recordingTime">00:00</span> <!-- 录音时长展示 -->
+      </div>
+
+      <!-- 按钮 -->
+      <div class="controls">
+        <button id="startBtn">开始录音</button>
+        <button id="pauseBtn" disabled>暂停</button> 
+        <button id="stopBtn" disabled>结束</button>
+        <button id="saveBtn" disabled>保存文本</button>
+      </div>
+    </div>
+  </div>
+  <script src="realtime-stt.js"></script>
+</body>
+</html>

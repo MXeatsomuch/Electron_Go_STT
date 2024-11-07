@@ -32,42 +32,6 @@ function createWindow() {
   });
 }
 
-// function createRecordWindow() {
-//   recordWindow = new BrowserWindow({
-//     width: 800,
-//     height: 600,
-//     webPreferences: {
-//       preload: path.join(__dirname, 'preload.js'),
-//       contextIsolation: true,
-//       nodeIntegration: false
-//     }
-//   });
-
-//   recordWindow.loadFile('pages/record.html');
-//   recordWindow.on('closed', () => {
-//     recordWindow = null;
-//   });
-// }
-
-// 创建用于展示转换转态的新窗口
-// function createDisplayStatusWindow() {
-//   displayWindow = new BrowserWindow({
-//     width: 800,
-//     height: 600,
-//     webPreferences: {
-//       preload: path.join(__dirname, 'preload.js'),
-//       contextIsolation: true,
-//       nodeIntegration: false
-//     }
-//   });
-
-//   displayWindow.loadFile('pages/filetotext.html');
-//   displayWindow.on('closed', () => {
-//     displayWindow = null;
-//   });
-// }
-
-
 // app.whenReady().then(createWindow);
 app.whenReady().then(() => {
   createWindow();
@@ -85,7 +49,8 @@ app.on('activate', () => {
   }
 });
 
-// 开始录音
+
+// record.html 开始录音
 ipcMain.on('start-recording', () => {
   console.log('开始录音...');
   audioChunks = [];
@@ -109,7 +74,7 @@ ipcMain.on('start-recording', () => {
 });
 
 
-// 停止录音并保存
+// record.html 停止录音并保存
 ipcMain.on('stop-recording', async (event) => {
   console.log('停止录音...');
 
@@ -146,7 +111,7 @@ ipcMain.on('stop-recording', async (event) => {
 
 
 
-// 处理选择文件的请求
+//filetotext.html 中选择录音文件
 ipcMain.handle('select-file', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
       properties: ['openFile'],
@@ -160,35 +125,8 @@ ipcMain.handle('select-file', async () => {
   });
 
 
-  // 处理保存路径选择
-ipcMain.handle('select-save-path', async () => {
-  const result = await dialog.showSaveDialog({
-    title: '选择保存录音的路径',
-    defaultPath: 'record.pcm',
-    filters: [{ name: 'PCM Audio', extensions: ['pcm'] }]
-  });
 
-  return result.filePath;
-});
-
-// 处理保存录音文件的请求
-// ipcMain.handle('save-audio-file', async (event, audioBuffer) => {
-//   const { filePath } = await dialog.showSaveDialog({
-//     title: "保存录音文件",
-//     filters: [{ name: "Audio", extensions: ["pcm"] }]
-//   });
-
-//   if (filePath) {
-//     const save_buffer = Buffer.from(audioBuffer);
-//     fs.writeFileSync(filePath, save_buffer);
-//     return filePath;
-//   }
-//   return null;
-// });
-
-// 处理文件转文字的 WebSocket 请求
-//require('./websocket.js');
-
+//filetotext.html 中将录音文件转为文字
 ipcMain.handle('transcribe-file', async (event, filePath) => {
     //检查文件格式
     audioprocess.convertFormat(filePath);
@@ -199,5 +137,76 @@ ipcMain.handle('transcribe-file', async (event, filePath) => {
     });
 
 });
+
+//filetotext.html 中将录音文字保存为PDF
+ipcMain.on('save-text-to-pdf', async (event, text) => {
+  // 弹出保存对话框，让用户选择保存路径
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: '保存为 PDF',
+    defaultPath: 'output.pdf',
+    filters: [{ name: 'PDF 文件', extensions: ['pdf'] }]
+  });
+
+  if (!canceled && filePath) {
+    const printWindow = new BrowserWindow({
+      show: false, // 不显示窗口
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false,
+      }
+    });
+    // 创建一个 HTML 页面，包裹字符串
+    const htmlContent = `
+      <html>
+      <body>
+        <h1>语音转文字结果</h1>
+        <p>${text}</p>
+      </body>
+      </html>
+    `;
+    
+    // 加载HTML内容到临时窗口
+    printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent));
+
+    printWindow.webContents.on('did-finish-load', () => {
+      // 将页面内容保存为 PDF
+      printWindow.webContents.printToPDF({}).then((data) => {
+        fs.writeFile(filePath, data, (err) => {
+          if (err) {
+            console.error('无法保存 PDF 文件:', err);
+          } else {
+            console.log('PDF 已保存到:', filePath);
+          }
+        });
+      }).catch((error) => {
+        console.error('生成 PDF 时出错:', error);
+      });
+    });
+  }
+});
+
+
+//realtime-stt.html 中开始实时录音
+ipcMain.on('start-realtime-record', (event) => {
+  console.log('startRealtimeRecording...');
+  websocket.startRealtimeRecording(event);
+});
+
+//realtime-stt.html 中暂停实时录音
+ipcMain.on('pause-realtime-record', (event) => {
+  websocket.pauseRealtimeRecording(event);
+});
+
+//realtime-stt.html 中继续实时录音
+ipcMain.on('resume-realtime-record', (event) => {
+  websocket.resumeRealtimeRecording(event);
+});
+
+//realtime-stt.html 中停止实时录音
+ipcMain.on('stop-realtime-record', (event) => {
+  const audioChunks = websocket.stopRealtimeRecording(event);
+  event.reply('realtime-recording-saved', audioChunks);
+});
+
 
 

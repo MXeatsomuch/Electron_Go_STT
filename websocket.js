@@ -2,6 +2,7 @@ const CryptoJS = require('crypto-js')
 const WebSocket = require('ws')
 var fs = require('fs')
 var log = require('log4node')
+const recorder = require('node-record-lpcm16');
 
 // 系统配置
 const config = {
@@ -15,6 +16,7 @@ const config = {
     highWaterMark: 1280
   }
 
+
 // 鉴权签名
 function getSigna(ts) {
     let md5 = CryptoJS.MD5(config.appid + ts).toString()
@@ -22,7 +24,6 @@ function getSigna(ts) {
     let base64 = CryptoJS.enc.Base64.stringify(sha1)
     return encodeURIComponent(base64)
 }
-
 function connectWebSocket() {
   return new Promise((resolve, reject) => {
     // 获取当前时间戳
@@ -78,35 +79,19 @@ async function startTranscription(filePath, onMessageCallback) {
             // ... do something
             let data = JSON.parse(res.data)
             rtasrResult[data.seg_id] = data
-          // 把转写结果解析为句子
-          if (data.cn.st.type == 0) {
-            rtasrResult.forEach(i => {
-              let str = "实时转写"
-              str += (i.cn.st.type == 0) ? "【最终】识别结果：" : "【中间】识别结果："
-              i.cn.st.rt.forEach(j => {
-                j.ws.forEach(k => {
-                  k.cw.forEach(l => {
-                    str += l.w
-                  })
+            let str = ""
+            let end_flag = data.cn.st.type == 0 ? '0' : '1'
+            data.cn.st.rt.forEach(j => {
+              j.ws.forEach(k => {
+                k.cw.forEach(l => {
+                  str += l.w
                 })
               })
-              let end_flag = data.cn.st.type == 0 ? '0' : '1'
+            })
+            log.info(str)
+            if (data.cn.st.type == 0){
               onMessageCallback({ type: end_flag, text: str})
-              log.info(str)
-            })}
-            // let str = ""
-            // let end_flag = data.cn.st.type == 0 ? '0' : '1'
-            // data.cn.st.rt.forEach(j => {
-            //   j.ws.forEach(k => {
-            //     k.cw.forEach(l => {
-            //       str += l.w
-            //     })
-            //   })
-            // })
-            // log.info(str)
-            // if (data.cn.st.type == 0){
-            //   onMessageCallback({ type: end_flag, text: str})
-            // }
+            }
             break
       }
     });
@@ -118,46 +103,112 @@ async function startTranscription(filePath, onMessageCallback) {
     onMessageCallback({ type: 'error', message: error.message });
   }
 }
-  // return new Promise((resolve, reject) => {
-  //   // 将wav文件转换为pcm文件
 
-  //   // 获取当前时间戳并连接
-  //   let ts = parseInt(new Date().getTime() / 1000)
-  //   let wssUrl = config.hostUrl + "?appid=" + config.appid + "&ts=" + ts + "&signa=" + getSigna(ts)
-  //   let ws = new WebSocket(wssUrl)
+let isRtPaused = false;
+let audioStream = null;
+let ws = null;
+let audioChunks = [];
+async function startRealtimeRecording(event) {
+  isRtPaused = false;
+  try {
+    ws = await connectWebSocket();
 
-  //   ws.on('open', () => {
-  //     const audioData = fs.readFileSync(filePath);
-  //     const frameSize = 1280;  // 每次发送的音频数据大小
-  //     let offset = 0;
+    ws.on('message', (data) => {
+      let res = JSON.parse(data)
+      console.log('Received message:', res.action);
+      switch (res.action) {
+        case 'error': 
+          console.error(`error code:${res.code} desc:${res.desc}`)
+          event.reply('realtime-status-update', `error code:${res.code} desc:${res.desc}`)
+          break
+        case 'started':
+          event.reply('realtime-status-update', '连接成功，开始录音');
+          console.log('开始录音并发送音频流');
+          // 开始录音
+          audioStream = recorder.record({
+            sampleRate: 16000, // 采样率16kHz
+            channels: 1,        // 单声道
+            bitDepth: 16,       // 位长16位
+            threshold: 0,
+            verbose: false,
+            silence: '20.0',
+          });
+          // 每40ms发送1280字节数据到服务器
+          const chunkDurationMs = 40;
+          const chunkSize = 1280;
 
-  //     const sendFrame = () => {
-  //       if (offset < audioData.length) {
-  //         const endOffset = Math.min(offset + frameSize, audioData.length);
-  //         const frame = audioData.slice(offset, endOffset);
-  //         ws.send(frame);
-  //         offset = endOffset;
-  //         setTimeout(sendFrame, 40);  // 控制发送速度，避免 WebSocket 服务端拥塞
-  //       } else {
-  //         ws.send(JSON.stringify({ end: true }));  // 发送结束标识
-  //       }
-  //     };
+          let buffer = Buffer.alloc(0);
+          audioStream.stream().on('data', (chunk) => {
+            if (!isRtPaused) {
+              audioChunks.push(chunk);
+              buffer = Buffer.concat([buffer, chunk]);
+              while (buffer.length >= chunkSize) {
+                const chunkToSend = buffer.slice(0, chunkSize);
+                buffer = buffer.slice(chunkSize);
+                ws.send(chunkToSend);
+              }
+            }
+          });
+          break
+        case 'result':
+          let str = ""
+          let data = JSON.parse(res.data)
+          data.cn.st.rt.forEach(j => {
+            j.ws.forEach(k => {
+              k.cw.forEach(l => {
+                str += l.w
+              })
+            })
+          })
+          log.info(str)
+          event.reply('realtime-transcription-result', str);
+          break 
+        }
+        ws.on('close', () => {
+          event.reply('realtime-status-update', '连接已关闭');
+          console.log('WebSocket 连接已关闭');
+        });
+    });
+    
+  } catch (error) {
+    console.error('Error starting realtime recording:', error);
+    event.reply('realtime-status-update', error.message);
+  }
 
-  //     sendFrame();
-  //   });
+}
 
-  //   ws.on('message', (message) => {
-  //     const data = JSON.parse(message);
-  //     if (data.code === 0 && data.data && data.data.result) {
-  //       resolve({ text: data.data.result.text });
-  //     } else if (data.code !== 0) {
-  //       reject(data);
-  //     }
-  //   });
+function pauseRealtimeRecording(event) {
+  isRtPaused = true;
+  console.log('录音暂停');
+  event.reply('realtime-status-update', '录音暂停');
+}
 
-  //   ws.on('error', (err) => {
-  //     reject(err);
-  //   });
-  // });
+function resumeRealtimeRecording(event) {
+  isRtPaused = false;
+  console.log('录音恢复');
+  event.reply('realtime-status-update', '录音恢复');
+}
 
-module.exports = { startTranscription };
+function stopRealtimeRecording(event) {
+  isRtPaused = true;
+  setTimeout(() => {
+    audioStream.stop()
+  }, 40)
+  audioStream.stream().on('stopComplete', () => {
+    event.reply('realtime-status-update', '录音结束');
+    console.log('录音结束');
+  })
+  ws.send("{\"end\": true}");
+  ws.on('close', () => {
+    event.reply('realtime-status-update', 'WebSocket 连接已关闭');
+    console.log('WebSocket 连接已关闭');
+  })
+  return audioChunks;
+}
+module.exports = { 
+  startTranscription, 
+  startRealtimeRecording, 
+  pauseRealtimeRecording,
+  resumeRealtimeRecording,
+  stopRealtimeRecording
+};
