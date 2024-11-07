@@ -4,45 +4,38 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>录音</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-    }
-    .container {
-      text-align: center;
-      margin-top: 50px;
-    }
-    button {
-      padding: 10px 20px;
-      margin: 10px;
-      font-size: 18px;
-    }
-    audio {
-      display: block;
-      margin: 20px auto;
-    }
-    #recordingsList {
-      margin-top: 20px;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
-    <button id="back">返回</button>
     <h1>录音页面</h1>
-    <button id="startRecord">开始录音</button>
-    <button id="stopRecord" disabled>停止录音</button>
-    <!-- <button id="saveRecord" disabled>保存录音</button> -->
-    <div id="status"></div>
-    <audio id="audioPlayback" controls></audio>
-    <div id="recordingsList"></div>
+    <div class="back">
+      <button id="backBtn">返回</button>
+    </div>
+    <!-- 状态显示 -->
+    <div class="status-area">
+      <p id="status">等待录音 </p>
+    </div>
+
+    <div class="recorder">
+      <div class="waveform-container">
+        <audio id="audioPlayback" controls></audio>
+        <!-- <div id="waveform"></div> 录音波形展示 -->
+        <!-- <span id="recordingTime">00:00</span> 录音时长展示 -->
+    </div>
+
+    <div class="controls">
+      <button id="startRecord">开始录音</button>
+      <button id="stopRecord" disabled>停止录音</button>
+    </div>
   </div>
 
   <script>
     let mediaRecorder;
     let recordedChunks = [];
     // 返回按钮
-    document.getElementById('back').addEventListener('click', () => {
+    document.getElementById('backBtn').addEventListener('click', () => {
+      clearRecord();
       window.location.href = './index.html';
     });
 
@@ -51,7 +44,7 @@
       window.electronAPI.startRecording();
       document.getElementById('startRecord').disabled = true;
       document.getElementById('stopRecord').disabled = false;
-      document.getElementById('audioPlayback').src = null;
+      //document.getElementById('audioPlayback').src = null;
     });
     
     // 停止录音

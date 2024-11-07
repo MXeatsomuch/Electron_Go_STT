@@ -5,46 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>录音文件转文字</title>
   <link rel="stylesheet" href="styles.css">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-    }
-    .container {
-      text-align: center;
-      margin-top: 50px;
-    }
-    button {
-      padding: 10px 20px;
-      margin: 10px;
-      font-size: 18px;
-    }
-    textarea {
-      width: 80%;
-      height: 200px;
-      margin-top: 20px;
-    }
-    #status {
-      margin: 20px;
-      font-size: 18px;
-      color: #333;
-    }
-  </style>
 </head>
 <body>
   <div class="container">
-    <button id="back">返回</button>
-    <button id="chooseFile">选择录音文件</button>
-    <button id="startConvert" disabled>开始转换</button>
-    <button id="saveText" disabled>保存文本</button>
+    <h1>录音文件转文字</h1>
+    <div class="back">
+      <button id="backBtn">返回</button>
+    </div>
 
-    <div id="status"></div>
-    <textarea id="transcribedText" placeholder="转换后的文字会显示在这里..." disabled></textarea>
+    <div class="status-area">
+      <p id="status">等待转写 </p>
+    </div>
+
+    <!-- 文本框 -->
+    <div class="text-box">
+      <label for="inputText" style="font-size: 14px;">转写内容:</label>
+      <textarea id="inputText" rows="8" readonly></textarea>
+    </div>
+
+    <div class="controls">
+      <button id="chooseFile">选择录音文件</button>
+      <button id="startConvert" disabled>开始转换</button>
+      <button id="saveText" disabled>保存文本</button>
+    </div>
   </div>
 
   <script>
     let transcriptionText = '';
     //返回按钮
-    document.getElementById('back').addEventListener('click', () => {
+    document.getElementById('backBtn').addEventListener('click', () => {
       window.location.href = './index.html';
     });
 
@@ -70,7 +59,7 @@
      
     //保存文本
     document.getElementById('saveText').addEventListener('click', async () => {
-      const text = document.getElementById('transcribedText').value;
+      const text = document.getElementById('inputText').value;
       const saveFlag = await window.electronAPI.saveTextToPDF(text);
       document.getElementById('status').textContent = `文本保存成功`;
 
@@ -80,7 +69,7 @@
     });
 
     // 接收来自 WebSocket 的转录消息
-    const transcriptionBox = document.getElementById('transcribedText');
+    const transcriptionBox = document.getElementById('inputText');
     window.electronAPI.onNewMessage((message) => {
       if (message.type === 'error') {
         document.getElementById('status').textContent = '转换失败';

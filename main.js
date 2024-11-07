@@ -70,7 +70,6 @@ ipcMain.on('start-recording', () => {
   mic.stream().on("stopComplete", () => {
     console.log("Microphone stopped.");
   });
-  mic.start();
 });
 
 
@@ -204,8 +203,8 @@ ipcMain.on('resume-realtime-record', (event) => {
 
 //realtime-stt.html 中停止实时录音
 ipcMain.on('stop-realtime-record', (event) => {
-  const audioChunks = websocket.stopRealtimeRecording(event);
-  event.reply('realtime-recording-saved', audioChunks);
+  const audioRealtimeChunks = websocket.stopRealtimeRecording(event);
+  event.reply('realtime-recording-saved', audioRealtimeChunks);
 });
 
 
