@@ -2,6 +2,7 @@
 let seconds = 0;
 let interval = null; // 计时器
 let isRecording = false;
+let pauseFlag = false;
 
 // 返回按钮
 document.getElementById('backBtn').addEventListener('click', () => {
@@ -30,12 +31,38 @@ document.getElementById('startRecord').addEventListener('click', async () => {
         interval = setInterval(timer, 1000);
     }
     isRecording = true;
+    document.getElementById('status').textContent = '录音中...';
     document.getElementById('startRecord').disabled = true;
     document.getElementById('stopRecord').disabled = false;
+    document.getElementById('pauseRecord').disabled = false;
     //document.getElementById('audioPlayback').src = null;
 });
 
-// 停止录音
+// 暂停/继续录音
+document.getElementById('pauseRecord').addEventListener('click', async() => {
+    if(pauseFlag) { //暂停
+        pauseFlag = false;
+        window.electronAPI.pauseRecording();
+        if (interval !== null) {
+            clearInterval(interval);
+            interval = null;
+        }
+        document.getElementById('pauseRecord').innerText = '继续';
+        document.getElementById('status').textContent = '录音已暂停';
+    }
+    else { //继续
+        pauseFlag = true;
+        window.electronAPI.resumeRecording();
+        if (interval === null) {
+            interval = setInterval(timer, 1000);
+        }
+        document.getElementById('pauseRecord').innerText = '暂停';
+        document.getElementById('status').textContent = '录音中...';
+    }
+    
+});
+
+// 结束录音
 document.getElementById('stopRecord').addEventListener('click', () => {
     window.electronAPI.stopRecording();
     if (interval !== null) {
@@ -43,15 +70,27 @@ document.getElementById('stopRecord').addEventListener('click', () => {
         interval = null;
     }
     isRecording = false;
+    document.getElementById('status').textContent = '录音结束';
     document.getElementById('startRecord').disabled = false;
     document.getElementById('stopRecord').disabled = true;
+    document.getElementById('pauseRecord').disabled = true;
+    document.getElementById('saveRecord').disabled = false;
+});
+
+// 保存为pcm
+document.getElementById('saveRecord').addEventListener('click', () => {
+    window.electronAPI.saveRecording();
 });
 
 window.electronAPI.onRecordingSaved((data) => {
-    if (data.success) {
-    const blob = new Blob(data.audio, { type: 'audio/wav' });
-    const audioURL = URL.createObjectURL(blob);
-    document.getElementById('audioPlayback').src = audioURL;
+    if (data.pcm) {
+        const blob = new Blob(data.audio, { type: 'audio/wav' });
+        const audioURL = URL.createObjectURL(blob);
+        document.getElementById('audioPlayback').src = audioURL;
+        document.getElementById('status').textContent = '录音已生成';
+    }
+    else if (data.success) {
+        document.getElementById('status').textContent = '录音已保存为.pcm';
     }
 });
 

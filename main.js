@@ -51,14 +51,17 @@ app.on('activate', () => {
 
 
 // record.html 开始录音
+let isPaused = false;
 ipcMain.on('start-recording', () => {
   console.log('开始录音...');
   audioChunks = [];
   mic = recorder.record(options);
   
   mic.stream().on('data', (chunk) => {
+    if (!isPaused) {
       audioChunks.push(chunk);
-    });
+    }
+  });
   mic.stream().on("error", (err) => {
     console.error("Error in Input Stream: " + err);
   });
@@ -72,42 +75,57 @@ ipcMain.on('start-recording', () => {
   });
 });
 
+// record.html 暂停录音
+ipcMain.on('pause-recording', async (event) => {
+  console.log('暂停录音...');
+  isPaused = true;
+});
 
-// record.html 停止录音并保存
+// record.html 继续录音
+ipcMain.on('resume-recording', async (event) => {
+  console.log('继续录音...');
+  isPaused = false;
+});
+
+// record.html 结束录音
 ipcMain.on('stop-recording', async (event) => {
   console.log('停止录音...');
+  isPaused = false;
 
   if (mic) {
     mic.stop();
     // 监听 'close' 事件，确保录音进程已完全停止
     mic.stream().on('close', async () => {
       console.log('录音进程已关闭');
-      // 选择保存路径
-      const { canceled, filePath } = await dialog.showSaveDialog({
-        title: '保存录音',
-        defaultPath: 'recording.pcm',
-        filters: [{ name: 'PCM Audio', extensions: ['pcm'] }]
-      });
-
-      if (!canceled && filePath) {
-        const buffer = Buffer.concat(audioChunks);
-        fs.writeFile(filePath, buffer, (err) => {
-          if (err) {
-            console.error('无法保存录音文件:', err);
-            event.reply('recording-saved', { success: false, message: err.message });
-          } else {
-            console.log('录音已保存到:', filePath);
-            event.reply('recording-saved', { success: true, filePath: filePath, audio: audioChunks });
-          }
-        });
-      }
+      event.reply('recording-saved', { success: true, audio: audioChunks, pcm: true});
     });
-
     // 清空录音对象
     mic = null;
   }
 });
 
+// record.html 保存录音文件为pcm
+ipcMain.on('save-recording', async (event, filePath) => {
+  // 选择保存路径
+  const { canceled, recordFilePath } = await dialog.showSaveDialog({
+    title: '保存录音',
+    defaultPath: 'recording.pcm',
+    filters: [{ name: 'PCM Audio', extensions: ['pcm'] }]
+  });
+
+  if (!canceled && recordFilePath) {
+    const buffer = Buffer.concat(audioChunks);
+    fs.writeFile(recordFilePath, buffer, (err) => {
+      if (err) {
+        console.error('无法保存录音文件:', err);
+        event.reply('recording-saved', { success: false, message: err.message, pcm: false});
+      } else {
+        console.log('录音已保存到:', recordFilePath);
+        event.reply('recording-saved', { success: true, filePath: recordFilePath, audio: audioChunks, pcm: false});
+      }
+    });
+  }
+});
 
 
 //filetotext.html 中选择录音文件

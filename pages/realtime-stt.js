@@ -38,7 +38,8 @@
         }
 
         isRecording = true;
-
+        pauseFlag = true;
+        document.getElementById('pauseBtn').innerText = '暂停';
         document.getElementById('pauseBtn').disabled = false;
         document.getElementById('stopBtn').disabled = false;
         document.getElementById('startBtn').disabled = true;
