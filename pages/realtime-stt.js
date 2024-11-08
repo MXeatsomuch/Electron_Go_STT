@@ -2,10 +2,16 @@
     let interval = null; // 计时器
     let transcriptionText = ''; // 转录文本
     let pauseFlag = true; // 暂停标志
+    let isRecording = false; // 录音标志
 
     //返回事件
     document.getElementById('backBtn').addEventListener('click', () => {
-        window.location.href = './index.html';
+        if (!isRecording) {
+            window.location.href = './index.html';
+        }
+        else {
+            alert('请先结束录音');
+        }
     });
 
     // 开始录音
@@ -30,6 +36,8 @@
         if (interval === null) {
             interval = setInterval(timer, 1000);
         }
+
+        isRecording = true;
 
         document.getElementById('pauseBtn').disabled = false;
         document.getElementById('stopBtn').disabled = false;
@@ -67,6 +75,9 @@
             clearInterval(interval);
             interval = null;
         }
+
+        isRecording = false;
+
         document.getElementById('startBtn').disabled = false;
         document.getElementById('saveBtn').disabled = false;
         document.getElementById('pauseBtn').disabled = true;

@@ -1,10 +1,16 @@
 
 let seconds = 0;
 let interval = null; // 计时器
+let isRecording = false;
 
 // 返回按钮
 document.getElementById('backBtn').addEventListener('click', () => {
-    window.location.href = './index.html';
+    if (!isRecording) {
+        window.location.href = './index.html';
+    }
+    else {
+        alert('请先结束录音');
+    }
 });
 
 // 开始录音
@@ -23,19 +29,20 @@ document.getElementById('startRecord').addEventListener('click', async () => {
     if (interval === null) {
         interval = setInterval(timer, 1000);
     }
+    isRecording = true;
     document.getElementById('startRecord').disabled = true;
     document.getElementById('stopRecord').disabled = false;
     //document.getElementById('audioPlayback').src = null;
 });
 
 // 停止录音
-let isRecording = true;
 document.getElementById('stopRecord').addEventListener('click', () => {
     window.electronAPI.stopRecording();
     if (interval !== null) {
         clearInterval(interval);
         interval = null;
     }
+    isRecording = false;
     document.getElementById('startRecord').disabled = false;
     document.getElementById('stopRecord').disabled = true;
 });
