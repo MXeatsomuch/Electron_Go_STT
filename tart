@@ -1,0 +1,173 @@
+[1mdiff --git a/main.js b/main.js[m
+[1mindex b0f8d79..4eaf113 100644[m
+[1m--- a/main.js[m
+[1m+++ b/main.js[m
+[36m@@ -139,7 +139,7 @@[m [mipcMain.handle('select-file', async () => {[m
+       return filePaths[0];[m
+     }[m
+     return null;[m
+[31m-  });[m
+[32m+[m[32m});[m
+ [m
+ [m
+ [m
+[36m@@ -156,7 +156,7 @@[m [mipcMain.handle('transcribe-file', async (event, filePath) => {[m
+ });[m
+ [m
+ //filetotext.html 中将录音文字保存为PDF[m
+[31m-ipcMain.on('save-text-to-pdf', async (event, text) => {[m
+[32m+[m[32mipcMain.handle('save-text-to-pdf', async (event, text) => {[m
+   // 弹出保存对话框，让用户选择保存路径[m
+   const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {[m
+     title: '保存为 PDF',[m
+[36m@@ -164,7 +164,10 @@[m [mipcMain.on('save-text-to-pdf', async (event, text) => {[m
+     filters: [{ name: 'PDF 文件', extensions: ['pdf'] }][m
+   });[m
+ [m
+[31m-  if (!canceled && filePath) {[m
+[32m+[m[32m  if (canceled && filePath) {[m
+[32m+[m[32m    return false;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  try {[m
+     const printWindow = new BrowserWindow({[m
+       show: false, // 不显示窗口[m
+       webPreferences: {[m
+[36m@@ -181,24 +184,18 @@[m [mipcMain.on('save-text-to-pdf', async (event, text) => {[m
+       </body>[m
+       </html>[m
+     `;[m
+[31m-    [m
+     // 加载HTML内容到临时窗口[m
+     printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent));[m
+[31m-[m
+[31m-    printWindow.webContents.on('did-finish-load', () => {[m
+[31m-      // 将页面内容保存为 PDF[m
+[31m-      printWindow.webContents.printToPDF({}).then((data) => {[m
+[31m-        fs.writeFile(filePath, data, (err) => {[m
+[31m-          if (err) {[m
+[31m-            console.error('无法保存 PDF 文件:', err);[m
+[31m-          } else {[m
+[31m-            console.log('PDF 已保存到:', filePath);[m
+[31m-          }[m
+[31m-        });[m
+[31m-      }).catch((error) => {[m
+[31m-        console.error('生成 PDF 时出错:', error);[m
+[31m-      });[m
+[31m-    });[m
+[32m+[m[32m    // 等待页面加载完成后生成 PDF[m
+[32m+[m[32m    const pdfData = await printWindow.webContents.printToPDF({});[m
+[32m+[m[32m    // 将生成的 PDF 数据写入文件[m
+[32m+[m[32m    await fs.promises.writeFile(filePath, pdfData);[m
+[32m+[m[32m    console.log('PDF 已保存到:', filePath);[m
+[32m+[m[32m    printWindow.destroy();[m
+[32m+[m[32m    return true; // 返回保存成功的标志[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error('生成 PDF 时出错:', error);[m
+[32m+[m[32m    return false; // 返回保存失败的标志[m
+   }[m
+ });[m
+ [m
+[1mdiff --git a/pages/file-stt.html b/pages/file-stt.html[m
+[1mindex 427e51e..2f5e962 100644[m
+[1m--- a/pages/file-stt.html[m
+[1m+++ b/pages/file-stt.html[m
+[36m@@ -61,11 +61,12 @@[m
+     document.getElementById('saveText').addEventListener('click', async () => {[m
+       const text = document.getElementById('inputText').value;[m
+       const saveFlag = await window.electronAPI.saveTextToPDF(text);[m
+[31m-      document.getElementById('status').textContent = `文本保存成功`;[m
+[31m-[m
+       if (saveFlag) {[m
+         document.getElementById('status').textContent = `文本保存成功`;[m
+       }[m
+[32m+[m[32m      else {[m
+[32m+[m[32m        document.getElementById('statusDisplay').textContent = `文本保存失败`;[m
+[32m+[m[32m      }[m
+     });[m
+ [m
+     // 接收来自 WebSocket 的转录消息[m
+[1mdiff --git a/pages/realtime-stt.js b/pages/realtime-stt.js[m
+[1mindex f68febb..a047971 100644[m
+[1m--- a/pages/realtime-stt.js[m
+[1m+++ b/pages/realtime-stt.js[m
+[36m@@ -43,6 +43,7 @@[m
+         document.getElementById('pauseBtn').disabled = false;[m
+         document.getElementById('stopBtn').disabled = false;[m
+         document.getElementById('startBtn').disabled = true;[m
+[32m+[m[32m        document.getElementById('statusDisplay').textContent = '正在录音...';[m
+     });[m
+ [m
+     // 暂停/继续录音[m
+[36m@@ -55,6 +56,7 @@[m
+                 interval = null;[m
+             }[m
+             document.getElementById('pauseBtn').innerText = '继续';[m
+[32m+[m[32m            document.getElementById('statusDisplay').textContent = '录音已暂停';[m
+         }[m
+         else { //继续[m
+             pauseFlag = true;[m
+[36m@@ -63,6 +65,7 @@[m
+                 interval = setInterval(timer, 1000);[m
+             }[m
+             document.getElementById('pauseBtn').innerText = '暂停';[m
+[32m+[m[32m            document.getElementById('statusDisplay').textContent = '录音已继续';[m
+         }[m
+         [m
+     });[m
+[36m@@ -83,18 +86,19 @@[m
+         document.getElementById('saveBtn').disabled = false;[m
+         document.getElementById('pauseBtn').disabled = true;[m
+         document.getElementById('stopBtn').disabled = true;[m
+[31m-[m
+[32m+[m[32m        document.getElementById('statusDisplay').textContent = '录音已结束';[m
+     });[m
+ [m
+     // 保存[m
+     document.getElementById('saveBtn').addEventListener('click', () => {[m
+[31m-         [m
+         // 保存转录文本到PDF[m
+         const saveFlag = window.electronAPI.saveTextToPDF(document.getElementById('inputText').value);[m
+[31m-        document.getElementById('statusDisplay').textContent = `文本保存成功`;[m
+         if (saveFlag) {[m
+             document.getElementById('statusDisplay').textContent = `文本保存成功`;[m
+         }[m
+[32m+[m[32m        else {[m
+[32m+[m[32m            document.getElementById('statusDisplay').textContent = `文本保存失败`;[m
+[32m+[m[32m        }[m
+     });[m
+ [m
+     // 实时转录结果展示[m
+[1mdiff --git a/pages/styles.css b/pages/styles.css[m
+[1mindex 6887fc0..d5cfaef 100644[m
+[1m--- a/pages/styles.css[m
+[1m+++ b/pages/styles.css[m
+[36m@@ -76,7 +76,7 @@[m
+   #inputText {[m
+     width: 100%;[m
+     padding: 10px;[m
+[31m-    font-size: 10px;[m
+[32m+[m[32m    font-size: 13px;[m
+     border: 1px solid #ccc;[m
+     border-radius: 5px;[m
+     resize: none;[m
+[1mdiff --git a/preload.js b/preload.js[m
+[1mindex 68ab54f..45b8ea0 100644[m
+[1m--- a/preload.js[m
+[1m+++ b/preload.js[m
+[36m@@ -6,14 +6,14 @@[m [mcontextBridge.exposeInMainWorld('electronAPI', {[m
+   pauseRecording: () => ipcRenderer.send('pause-recording'), //record.html 中暂停录音[m
+   resumeRecording: () => ipcRenderer.send('resume-recording'), //record.html 中继续录音[m
+   stopRecording: () => ipcRenderer.send('stop-recording'), //record.html 中停止录音[m
+[31m-  saveRecording: () => ipcRenderer.send('save-recording'), //record.html 中保存录音[m
+[32m+[m[32m  saveRecording: () => ipcRenderer.invoke('save-recording'), //record.html 中保存录音[m
+   onRecordingSaved: (callback) => ipcRenderer.on('recording-saved', (event, data) => callback(data)), //record.html 中接收保存录音文件用于播放[m
+ [m
+   selectFile: () => ipcRenderer.invoke('select-file'), //filetotext.html 中选择录音文件[m
+   onNewMessage: (callback) => ipcRenderer.on('new-message', (event, msg) => callback(msg)), //filetotext.html 中实时接收数据[m
+   transcribeFile: (filePath) => ipcRenderer.invoke('transcribe-file', filePath),//filetotext.html 中将录音文件转为文字[m
+ [m
+[31m-  saveTextToPDF: (text) => ipcRenderer.send('save-text-to-pdf', text), //filetotext.html和realtime-stt.html 中保存文字到PDF[m
+[32m+[m[32m  saveTextToPDF: (text) => ipcRenderer.invoke('save-text-to-pdf', text), //filetotext.html和realtime-stt.html 中保存文字到PDF[m
+   [m
+   startRealtimeRecord: () => ipcRenderer.send('start-realtime-record'), //realtime-stt.html 中开始实时录音[m
+   pauseRealtimeRecord: () => ipcRenderer.send('pause-realtime-record'), //realtime-stt.html 中暂停实时录音[m

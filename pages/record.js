@@ -31,6 +31,8 @@ document.getElementById('startRecord').addEventListener('click', async () => {
         interval = setInterval(timer, 1000);
     }
     isRecording = true;
+    pauseFlag =  true;
+    document.getElementById('pauseRecord').innerText = '暂停';
     document.getElementById('status').textContent = '录音中...';
     document.getElementById('startRecord').disabled = true;
     document.getElementById('stopRecord').disabled = false;
@@ -78,8 +80,14 @@ document.getElementById('stopRecord').addEventListener('click', () => {
 });
 
 // 保存为pcm
-document.getElementById('saveRecord').addEventListener('click', () => {
-    window.electronAPI.saveRecording();
+document.getElementById('saveRecord').addEventListener('click', async() => {
+    const saveFlag = await window.electronAPI.saveRecording();
+    if (saveFlag) {
+        document.getElementById('status').textContent = '录音已保存';
+    }
+    else {
+        document.getElementById('status').textContent = '录音保存失败';
+    }
 });
 
 window.electronAPI.onRecordingSaved((data) => {
@@ -88,9 +96,6 @@ window.electronAPI.onRecordingSaved((data) => {
         const audioURL = URL.createObjectURL(blob);
         document.getElementById('audioPlayback').src = audioURL;
         document.getElementById('status').textContent = '录音已生成';
-    }
-    else if (data.success) {
-        document.getElementById('status').textContent = '录音已保存为.pcm';
     }
 });
 

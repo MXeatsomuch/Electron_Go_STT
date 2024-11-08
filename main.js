@@ -105,25 +105,24 @@ ipcMain.on('stop-recording', async (event) => {
 });
 
 // record.html 保存录音文件为pcm
-ipcMain.on('save-recording', async (event, filePath) => {
+ipcMain.handle('save-recording', async (event) => {
   // 选择保存路径
-  const { canceled, recordFilePath } = await dialog.showSaveDialog({
+  const { canceled, filePath  } = await dialog.showSaveDialog({
     title: '保存录音',
     defaultPath: 'recording.pcm',
     filters: [{ name: 'PCM Audio', extensions: ['pcm'] }]
   });
 
-  if (!canceled && recordFilePath) {
+  if (!canceled && filePath ) {
     const buffer = Buffer.concat(audioChunks);
-    fs.writeFile(recordFilePath, buffer, (err) => {
-      if (err) {
-        console.error('无法保存录音文件:', err);
-        event.reply('recording-saved', { success: false, message: err.message, pcm: false});
-      } else {
-        console.log('录音已保存到:', recordFilePath);
-        event.reply('recording-saved', { success: true, filePath: recordFilePath, audio: audioChunks, pcm: false});
-      }
-    });
+    try {
+      await fs.promises.writeFile(filePath , buffer);
+      console.log('录音已保存到:', filePath );
+      return true;
+    } catch (error) {
+      console.error('无法保存录音文件:', error);
+      return false;
+    }
   }
 });
 
