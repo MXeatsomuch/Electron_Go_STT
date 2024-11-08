@@ -164,10 +164,6 @@ async function startRealtimeRecording(event) {
           event.reply('realtime-transcription-result', str);
           break 
         }
-        ws.on('close', () => {
-          event.reply('realtime-status-update', '连接已关闭');
-          console.log('WebSocket 连接已关闭');
-        });
     });
     
   } catch (error) {
