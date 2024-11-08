@@ -43,6 +43,7 @@
         document.getElementById('pauseBtn').disabled = false;
         document.getElementById('stopBtn').disabled = false;
         document.getElementById('startBtn').disabled = true;
+        document.getElementById('statusDisplay').textContent = '正在录音...';
     });
 
     // 暂停/继续录音
@@ -55,6 +56,7 @@
                 interval = null;
             }
             document.getElementById('pauseBtn').innerText = '继续';
+            document.getElementById('statusDisplay').textContent = '录音已暂停';
         }
         else { //继续
             pauseFlag = true;
@@ -63,6 +65,7 @@
                 interval = setInterval(timer, 1000);
             }
             document.getElementById('pauseBtn').innerText = '暂停';
+            document.getElementById('statusDisplay').textContent = '录音已继续';
         }
         
     });
@@ -83,17 +86,18 @@
         document.getElementById('saveBtn').disabled = false;
         document.getElementById('pauseBtn').disabled = true;
         document.getElementById('stopBtn').disabled = true;
-
+        document.getElementById('statusDisplay').textContent = '录音已结束';
     });
 
     // 保存
     document.getElementById('saveBtn').addEventListener('click', () => {
-         
         // 保存转录文本到PDF
         const saveFlag = window.electronAPI.saveTextToPDF(document.getElementById('inputText').value);
-        document.getElementById('statusDisplay').textContent = `文本保存成功`;
         if (saveFlag) {
             document.getElementById('statusDisplay').textContent = `文本保存成功`;
+        }
+        else {
+            document.getElementById('statusDisplay').textContent = `文本保存失败`;
         }
     });
 

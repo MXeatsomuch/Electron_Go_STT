@@ -139,7 +139,7 @@ ipcMain.handle('select-file', async () => {
       return filePaths[0];
     }
     return null;
-  });
+});
 
 
 
@@ -156,7 +156,7 @@ ipcMain.handle('transcribe-file', async (event, filePath) => {
 });
 
 //filetotext.html 中将录音文字保存为PDF
-ipcMain.on('save-text-to-pdf', async (event, text) => {
+ipcMain.handle('save-text-to-pdf', async (event, text) => {
   // 弹出保存对话框，让用户选择保存路径
   const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
     title: '保存为 PDF',
@@ -164,7 +164,10 @@ ipcMain.on('save-text-to-pdf', async (event, text) => {
     filters: [{ name: 'PDF 文件', extensions: ['pdf'] }]
   });
 
-  if (!canceled && filePath) {
+  if (canceled && filePath) {
+    return false;
+  }
+  try {
     const printWindow = new BrowserWindow({
       show: false, // 不显示窗口
       webPreferences: {
@@ -181,24 +184,18 @@ ipcMain.on('save-text-to-pdf', async (event, text) => {
       </body>
       </html>
     `;
-    
     // 加载HTML内容到临时窗口
     printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent));
-
-    printWindow.webContents.on('did-finish-load', () => {
-      // 将页面内容保存为 PDF
-      printWindow.webContents.printToPDF({}).then((data) => {
-        fs.writeFile(filePath, data, (err) => {
-          if (err) {
-            console.error('无法保存 PDF 文件:', err);
-          } else {
-            console.log('PDF 已保存到:', filePath);
-          }
-        });
-      }).catch((error) => {
-        console.error('生成 PDF 时出错:', error);
-      });
-    });
+    // 等待页面加载完成后生成 PDF
+    const pdfData = await printWindow.webContents.printToPDF({});
+    // 将生成的 PDF 数据写入文件
+    await fs.promises.writeFile(filePath, pdfData);
+    console.log('PDF 已保存到:', filePath);
+    printWindow.destroy();
+    return true; // 返回保存成功的标志
+  } catch (error) {
+    console.error('生成 PDF 时出错:', error);
+    return false; // 返回保存失败的标志
   }
 });
 

@@ -61,10 +61,11 @@
     document.getElementById('saveText').addEventListener('click', async () => {
       const text = document.getElementById('inputText').value;
       const saveFlag = await window.electronAPI.saveTextToPDF(text);
-      document.getElementById('status').textContent = `文本保存成功`;
-
       if (saveFlag) {
         document.getElementById('status').textContent = `文本保存成功`;
+      }
+      else {
+        document.getElementById('statusDisplay').textContent = `文本保存失败`;
       }
     });
 
