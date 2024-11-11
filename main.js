@@ -185,7 +185,11 @@ ipcMain.handle('save-text-to-pdf', async (event, text) => {
     `;
     // 加载HTML内容到临时窗口
     printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent));
-    // 等待页面加载完成后生成 PDF
+    // 等待页面加载完成
+    await new Promise((resolve) => {
+      printWindow.webContents.on('did-finish-load', resolve);
+    });
+    // 生成 PDF
     const pdfData = await printWindow.webContents.printToPDF({});
     // 将生成的 PDF 数据写入文件
     await fs.promises.writeFile(filePath, pdfData);

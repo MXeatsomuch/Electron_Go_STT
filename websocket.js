@@ -3,6 +3,7 @@ const WebSocket = require('ws')
 var fs = require('fs')
 var log = require('log4node')
 const recorder = require('node-record-lpcm16');
+const { start } = require('repl');
 
 // 系统配置
 const config = {
@@ -134,18 +135,18 @@ async function startRealtimeRecording(event) {
             silence: '20.0',
           });
           // 每40ms发送1280字节数据到服务器
-          const chunkDurationMs = 40;
           const chunkSize = 1280;
-
+          audioChunks = [];
+          let nextSendPosition = 0;
           let buffer = Buffer.alloc(0);
           audioStream.stream().on('data', (chunk) => {
             if (!isRtPaused) {
               audioChunks.push(chunk);
               buffer = Buffer.concat([buffer, chunk]);
-              while (buffer.length >= chunkSize) {
-                const chunkToSend = buffer.slice(0, chunkSize);
-                buffer = buffer.slice(chunkSize);
+              while (buffer.length >= nextSendPosition + chunkSize) {
+                const chunkToSend = buffer.subarray(nextSendPosition, nextSendPosition + chunkSize);
                 ws.send(chunkToSend);
+                nextSendPosition += chunkSize;
               }
             }
           });
@@ -153,13 +154,14 @@ async function startRealtimeRecording(event) {
         case 'result':
           let str = ""
           let data = JSON.parse(res.data)
-          data.cn.st.rt.forEach(j => {
-            j.ws.forEach(k => {
-              k.cw.forEach(l => {
-                str += l.w
+          if (data.cn.st.type == 0){
+            data.cn.st.rt.forEach(j => {
+              j.ws.forEach(k => {
+                k.cw.forEach(l => {
+                  str += l.w
+                })
               })
-            })
-          })
+          })}
           log.info(str)
           event.reply('realtime-transcription-result', str);
           break 
