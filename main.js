@@ -6,6 +6,9 @@ const audioprocess = require('./audio-processing')
 const websocket = require('./websocket')
 const recorder = require('node-record-lpcm16');
 
+// CA 证书的路径
+const caCertPath = path.join(__dirname, 'assets', 'ca-cert.pem');
+
 const options = {
   sampleRate: 16000, // 采样率16kHz
   channels: 1,        // 单声道
@@ -13,6 +16,7 @@ const options = {
 };
 
 let mainWindow;
+let displayWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -35,6 +39,12 @@ function createWindow() {
 // app.whenReady().then(createWindow);
 app.whenReady().then(() => {
   createWindow();
+
+    // 监听证书错误事件
+    app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+      event.preventDefault();
+      callback(true); // 接受证书
+    });
 });
 
 app.on('window-all-closed', () => {

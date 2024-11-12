@@ -1,30 +1,45 @@
 const CryptoJS = require('crypto-js')
 const WebSocket = require('ws')
 var fs = require('fs')
+const path = require('path');
 var log = require('log4node')
 const recorder = require('node-record-lpcm16');
-const { start } = require('repl');
+
+// CA 证书的路径
+const caCertPath = path.join(__dirname, 'assets', 'ca-cert.pem');
+
+// 读取 CA 证书
+const caCert = fs.readFileSync(caCertPath);
+
+// 创建一个自定义的 WebSocket 构造函数，使用自定义的 CA 证书
+const WebSocketWithCA = (url) => new WebSocket(url, {
+  ca: [caCert], // 使用自签名 CA 证书
+  rejectUnauthorized: false, // 禁用证书验证（不推荐在生产环境中使用）
+});
+
+const ws_front = WebSocketWithCA('wss://localhost:9000/ws');
 
 // 系统配置
 const config = {
-    // 请求地址
-    hostUrl: "wss://rtasr.xfyun.cn/v1/ws",
-    //在控制台-我的应用-实时语音转写获取
-    appid: "944aa7dd",
-    //在控制台-我的应用-实时语音转写获取
-    apiKey: "99e1e0eebdfdabedb761ee0e2f6e26c4",
-    file: "./test_1.pcm",//请填写您的音频文件路径
-    highWaterMark: 1280
-  }
+  // 请求地址
+  hostUrl: "wss://rtasr.xfyun.cn/v1/ws",
+  //在控制台-我的应用-实时语音转写获取
+  appid: "944aa7dd",
+  //在控制台-我的应用-实时语音转写获取
+  apiKey: "99e1e0eebdfdabedb761ee0e2f6e26c4",
+  file: "./test_1.pcm",//请填写您的音频文件路径
+  highWaterMark: 1280
+}
 
 
 // 鉴权签名
 function getSigna(ts) {
-    let md5 = CryptoJS.MD5(config.appid + ts).toString()
-    let sha1 = CryptoJS.HmacSHA1(md5, config.apiKey)
-    let base64 = CryptoJS.enc.Base64.stringify(sha1)
-    return encodeURIComponent(base64)
+  let md5 = CryptoJS.MD5(config.appid + ts).toString()
+  let sha1 = CryptoJS.HmacSHA1(md5, config.apiKey)
+  let base64 = CryptoJS.enc.Base64.stringify(sha1)
+  return encodeURIComponent(base64)
 }
+
 function connectWebSocket() {
   return new Promise((resolve, reject) => {
     // 获取当前时间戳
@@ -47,75 +62,68 @@ function connectWebSocket() {
   });
 }
 
-
 async function startTranscription(filePath, onMessageCallback) {
   try {
-    let ws = await connectWebSocket();
+    const WebSocketWithCA = (url) => new WebSocket(url, {
+      ca: [caCert], // 使用自签名 CA 证书
+      // rejectUnauthorized: false, // 禁用证书验证（不推荐在生产环境中使用）
+    });
+  
+    const ws = WebSocketWithCA('wss://localhost:9000/ws');
     let curRole = 1; //角色从1开始
     let str = "";
     ws.on('message', (data) => {
-      // Handle incoming messages
       let res = JSON.parse(data)
-      console.log('Received message:', res.action);
-      switch (res.action) {
+      
+      log.info(res.action)
+      switch(res.action) {
         case 'error':
-          log.info(`error code:${res.code} desc:${res.desc}`)
-          onMessageCallback({ type: 'error', code: res.code, desc: res.desc });
           break
-          // 连接建立
         case 'started':
-          log.info('started!')
-          log.info('sid is:' + res.sid)
-          // 开始读取文件进行传输
-          var readerStream = fs.createReadStream(filePath, {
-            highWaterMark: config.highWaterMark
-          });
+          var readerStream = fs.createReadStream(filePath);
           readerStream.on('data', function (chunk) {
             ws.send(chunk)
           });
-          readerStream.on('end', function () {
-            // 最终帧发送结束
-            ws.send("{\"end\": true}")
-          });
-            break
-          case 'result':
-            let data = JSON.parse(res.data)
-            if (data.cn.st.type == 0){
-              data.cn.st.rt.forEach(j => {
-                log.info(res.data)
-                j.ws.forEach(k => {
-                  k.cw.forEach(l => {
-                    if(l.rl == curRole || l.rl == 0) { //没有切换角色
-                      str += l.w
+          // readerStream.on('end', function () {
+          //   // 最终帧发送结束
+          //   // ws.send("{\"end\": true}")
+          // });
+          break
+        case 'result':
+          let data = JSON.parse(res.data)
+          if (data.cn.st.type == 0){
+            data.cn.st.rt.forEach(j => {
+              log.info(res.data)
+              j.ws.forEach(k => {
+                k.cw.forEach(l => {
+                  if(l.rl == curRole || l.rl == 0) { //没有切换角色
+                    str += l.w
+                  }
+                  else {// 角色切换
+                    if(str != "") {
+                      log.info(str)
+                      onMessageCallback({ type:'success', role: curRole, text: str})
+                      str = ""
                     }
-                    else {// 角色切换
-                      if(str != "") {
-                        log.info(str)
-                        onMessageCallback({ type:'success', role: curRole, text: str})
-                        str = ""
-                      }
-                      curRole = l.rl
-                      str += l.w
-                    }
-                  })
+                    curRole = l.rl
+                    str += l.w
+                  }
                 })
               })
-              if(str != "") {
-                log.info(str)
-                onMessageCallback({ type:'success', role: curRole, text: str})
-                str = ""
-              }
+            })
+            if(str != "") {
+              log.info(str)
+              onMessageCallback({ type:'success', role: curRole, text: str})
+              str = ""
             }
-            break
+          }
+          break
       }
     });
     ws.on('close', () => {
       console.log('WebSocket 连接关闭');
       onMessageCallback({ type:'end'});
     });
-
-    // Other event listeners
-
   } catch (error) {
     console.error('Error starting WebSocket:', error);
     onMessageCallback({ type: 'error', message: error.message });
@@ -137,7 +145,7 @@ async function startRealtimeRecording(event) {
       let res = JSON.parse(data)
       console.log('Received message:', res.action);
       switch (res.action) {
-        case 'error': 
+        case 'error':
           console.error(`error code:${res.code} desc:${res.desc}`)
           event.reply('realtime-status-update', `error code:${res.code} desc:${res.desc}`)
           break
@@ -200,7 +208,7 @@ async function startRealtimeRecording(event) {
           break 
         }
     });
-    
+
   } catch (error) {
     console.error('Error starting realtime recording:', error);
     event.reply('realtime-status-update', error.message);
@@ -236,9 +244,9 @@ function stopRealtimeRecording(event) {
   })
   return audioChunks;
 }
-module.exports = { 
-  startTranscription, 
-  startRealtimeRecording, 
+module.exports = {
+  startTranscription,
+  startRealtimeRecording,
   pauseRealtimeRecording,
   resumeRealtimeRecording,
   stopRealtimeRecording
