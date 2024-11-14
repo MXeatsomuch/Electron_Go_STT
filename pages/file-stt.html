@@ -12,79 +12,16 @@
     <div class="back">
       <button id="backBtn">返回</button>
     </div>
-
     <div class="status-area">
       <p id="status">等待转写 </p>
     </div>
-
-    <!-- 文本框 -->
-    <div class="text-box">
-      <label for="inputText" style="font-size: 14px;">转写内容:</label>
-      <textarea id="inputText" rows="8" readonly></textarea>
-    </div>
-
-    <div class="controls">
+    <div id="chat-box"></div>
+    <div class="controls_filestt">
       <button id="chooseFile">选择录音文件</button>
       <button id="startConvert" disabled>开始转换</button>
       <button id="saveText" disabled>保存文本</button>
     </div>
   </div>
-
-  <script>
-    let transcriptionText = '';
-    //返回按钮
-    document.getElementById('backBtn').addEventListener('click', () => {
-      window.location.href = './index.html';
-    });
-
-    //选择文件按钮
-    let selectedFilePath = null;
-    document.getElementById('chooseFile').addEventListener('click', async () => {
-      document.getElementById('status').textContent = "请选择格式为pcm的录音文件"
-      selectedFilePath = await window.electronAPI.selectFile();
-      if (selectedFilePath) {
-        document.getElementById('status').textContent = `已选择文件: ${selectedFilePath}`;
-        document.getElementById('startConvert').disabled = false;
-      } else {
-        document.getElementById('status').textContent = '未选择任何文件';
-      }
-    });
-    
-    //转换录音文件
-    document.getElementById('startConvert').addEventListener('click', async () => {
-      document.getElementById('status').textContent = '正在转换...';
-      transcriptionText = '';
-      const result = await window.electronAPI.transcribeFile(selectedFilePath);
-    });
-     
-    //保存文本
-    document.getElementById('saveText').addEventListener('click', async () => {
-      const text = document.getElementById('inputText').value;
-      const saveFlag = await window.electronAPI.saveTextToPDF(text);
-      if (saveFlag) {
-        document.getElementById('status').textContent = `文本保存成功`;
-      }
-      else {
-        document.getElementById('statusDisplay').textContent = `文本保存失败`;
-      }
-    });
-
-    // 接收来自 WebSocket 的转录消息
-    const transcriptionBox = document.getElementById('inputText');
-    window.electronAPI.onNewMessage((message) => {
-      if (message.type === 'error') {
-        document.getElementById('status').textContent = '转换失败';
-      }
-      else{
-        if (message.type === '0') {
-          document.getElementById('status').textContent = '转换完成';
-        }
-        transcriptionText += message.text + '\n';
-        transcriptionBox.value = transcriptionText; // 更新文本框内容
-        transcriptionBox.scrollTop = transcriptionBox.scrollHeight; // 滚动到最新消息
-        document.getElementById('saveText').disabled = false;
-      }
-    });
-  </script>
+  <script src="file-stt.js"></script>
 </body>
 </html>

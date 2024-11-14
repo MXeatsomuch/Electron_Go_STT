@@ -60,30 +60,85 @@
     color: darkcyan;
   }
   
-  .text-box {
-    position: relative;
-    top: -68px;
-    height: 120px;
-    margin-bottom: 30px;
-  }
-  
-  .text-box label {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 18px;
-  }
-  
-  #inputText {
-    width: 100%;
-    padding: 10px;
-    font-size: 13px;
+  #chat-box {
     border: 1px solid #ccc;
+    background-color: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    height: 300px;
+    padding: 15px;
+    overflow-y: auto; /* 滚动条 */
+    top: -68px;
+    position: relative;
+    margin: 0 auto;
     border-radius: 5px;
-    resize: none;
-    height: 180px;
+  }
+
+  .message-block {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .role-header {
+    font-weight: bold;
+    font-size: 12px;
+    margin-bottom: 5px;
+    color: #333;
+  }
+
+  .message-bubble {
+    padding: 10px;
+    border-radius: 20px;
+    max-width: 80%; /* 气泡最大宽度为聊天框的 80% */
+    word-wrap: break-word;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    background-color: #d4f4ff;
+    align-self: flex-start; /* 左对齐*/
+    font-size: 13px;
+  }
+
+  .controls_filestt {
+    text-align: center;
+    top: -50px;
+    position: relative;
   }
   
+  .controls_filestt button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    margin: 0 10px;
+  }
+  .controls_filestt button:disabled {
+    background-color: #ccc;
+  }
+  
+  .controls_filestt button:hover:not(:disabled) {
+    background-color: #0056b3;
+  }
+  
+  #chat-box-rt {
+    border: 1px solid #ccc;
+    background-color: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    height: 270px;
+    padding: 15px;
+    overflow-y: auto; /* 滚动条 */
+    top: -68px;
+    position: relative;
+    margin: 0 auto;
+    border-radius: 5px;
+  }
+
   .recorder {
+    top: -56px;
+    position: relative;
     /* margin-top: 20px; */
   }
   
@@ -100,20 +155,24 @@
   }
   #audioPlayback {
     width: 90%;
+    height: 25px;
   }
   
   #recordingTime {
     position: absolute;
     right: 20px;
-    top: 20px;
-    font-size: 16px;
+    top: 10px;
+    font-size: 15px;
     font-weight: bold;
     color: #333;
+    height: 25px;
+    align-self: flex-end; /* 右对齐 */
   }
   
   .controls {
     text-align: center;
-    margin-top: 20px;
+    top: 5px;
+    position: relative;
   }
   
   .controls button {

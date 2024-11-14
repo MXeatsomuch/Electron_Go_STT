@@ -29,7 +29,9 @@ function connectWebSocket() {
   return new Promise((resolve, reject) => {
     // 获取当前时间戳
     let ts = parseInt(new Date().getTime() / 1000);
-    let wssUrl = config.hostUrl + "?appid=" + config.appid + "&ts=" + ts + "&signa=" + getSigna(ts);
+    let args = "&roleType=2"
+    let wssUrl = config.hostUrl + "?appid=" + config.appid + "&ts=" + ts + "&signa=" + getSigna(ts) + args;
+
     let ws = new WebSocket(wssUrl);
 
     ws.on('open', () => {
@@ -47,10 +49,10 @@ function connectWebSocket() {
 
 
 async function startTranscription(filePath, onMessageCallback) {
-  let rtasrResult = []
   try {
     let ws = await connectWebSocket();
-    
+    let curRole = 1; //角色从1开始
+    let str = "";
     ws.on('message', (data) => {
       // Handle incoming messages
       let res = JSON.parse(data)
@@ -75,26 +77,41 @@ async function startTranscription(filePath, onMessageCallback) {
             // 最终帧发送结束
             ws.send("{\"end\": true}")
           });
-          break
+            break
           case 'result':
-            // ... do something
             let data = JSON.parse(res.data)
-            rtasrResult[data.seg_id] = data
-            let str = ""
-            let end_flag = data.cn.st.type == 0 ? '0' : '1'
-            data.cn.st.rt.forEach(j => {
-              j.ws.forEach(k => {
-                k.cw.forEach(l => {
-                  str += l.w
+            if (data.cn.st.type == 0){
+              data.cn.st.rt.forEach(j => {
+                log.info(res.data)
+                j.ws.forEach(k => {
+                  k.cw.forEach(l => {
+                    if(l.rl == curRole || l.rl == 0) { //没有切换角色
+                      str += l.w
+                    }
+                    else {// 角色切换
+                      if(str != "") {
+                        log.info(str)
+                        onMessageCallback({ type:'success', role: curRole, text: str})
+                        str = ""
+                      }
+                      curRole = l.rl
+                      str += l.w
+                    }
+                  })
                 })
               })
-            })
-            log.info(str)
-            if (data.cn.st.type == 0){
-              onMessageCallback({ type: end_flag, text: str})
+              if(str != "") {
+                log.info(str)
+                onMessageCallback({ type:'success', role: curRole, text: str})
+                str = ""
+              }
             }
             break
       }
+    });
+    ws.on('close', () => {
+      console.log('WebSocket 连接关闭');
+      onMessageCallback({ type:'end'});
     });
 
     // Other event listeners
@@ -111,6 +128,8 @@ let ws = null;
 let audioChunks = [];
 async function startRealtimeRecording(event) {
   isRtPaused = false;
+  let str = ""
+  let curRole = 1; //角色从1开始
   try {
     ws = await connectWebSocket();
 
@@ -152,18 +171,32 @@ async function startRealtimeRecording(event) {
           });
           break
         case 'result':
-          let str = ""
           let data = JSON.parse(res.data)
           if (data.cn.st.type == 0){
             data.cn.st.rt.forEach(j => {
               j.ws.forEach(k => {
                 k.cw.forEach(l => {
-                  str += l.w
+                  if(l.rl == curRole || l.rl == 0) { //没有切换角色
+                    str += l.w
+                    if(l.wp == "p") { //遇到标点符号就返回
+                      log.info(str)
+                      event.reply('realtime-transcription-result', { type:'success', role: curRole, text: str})
+                      str = ""
+                    }
+                  }
+                  else {// 角色切换
+                    if(str != "") {
+                      log.info(str)
+                      event.reply('realtime-transcription-result', { type:'success', role: curRole, text: str})
+                      str = ""
+                    }
+                    curRole = l.rl
+                    str += l.w
+                  }
                 })
               })
-          })}
-          log.info(str)
-          event.reply('realtime-transcription-result', str);
+            })
+          }
           break 
         }
     });
