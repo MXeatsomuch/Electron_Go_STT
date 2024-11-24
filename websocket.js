@@ -1,9 +1,23 @@
 const CryptoJS = require('crypto-js')
 const WebSocket = require('ws')
 var fs = require('fs')
+const path = require('path');
 var log = require('log4node')
 const recorder = require('node-record-lpcm16');
-const { start } = require('repl');
+
+// CA 证书的路径
+const caCertPath = path.join(__dirname, 'assets', 'ca-cert.pem');
+
+// 读取 CA 证书
+const caCert = fs.readFileSync(caCertPath);
+
+// 创建一个自定义的 WebSocket 构造函数，使用自定义的 CA 证书
+const WebSocketWithCA = (url) => new WebSocket(url, {
+  ca: [caCert], // 使用自签名 CA 证书
+  rejectUnauthorized: false, // 禁用证书验证（不推荐在生产环境中使用）
+});
+
+const ws_front = WebSocketWithCA('wss://localhost:9000/ws');
 
 // 系统配置
 const config = {
@@ -50,7 +64,13 @@ function connectWebSocket() {
 
 async function startTranscription(filePath, onMessageCallback) {
   try {
-    let ws = await connectWebSocket();
+    let WebSocketWithCA = (url) => new WebSocket(url, {
+      ca: [caCert], // 使用自签名 CA 证书
+      // rejectUnauthorized: false, // 禁用证书验证（不推荐在生产环境中使用）
+    });
+  
+    let ws = WebSocketWithCA('wss://localhost:9000/ws');
+ 
     let curRole = 1; //角色从1开始
     let str = "";
     ws.on('message', (data) => {
@@ -68,7 +88,7 @@ async function startTranscription(filePath, onMessageCallback) {
           log.info('sid is:' + res.sid)
           // 开始读取文件进行传输
           var readerStream = fs.createReadStream(filePath, {
-            highWaterMark: config.highWaterMark
+            highWaterMark: 1280
           });
           readerStream.on('data', function (chunk) {
             ws.send(chunk)
@@ -131,7 +151,12 @@ async function startRealtimeRecording(event) {
   let str = ""
   let curRole = 1; //角色从1开始
   try {
-    ws = await connectWebSocket();
+    let WebSocketWithCA = (url) => new WebSocket(url, {
+      ca: [caCert], // 使用自签名 CA 证书
+      // rejectUnauthorized: false, // 禁用证书验证（不推荐在生产环境中使用）
+    });
+  
+    let ws = WebSocketWithCA('wss://localhost:9001/ws');
 
     ws.on('message', (data) => {
       let res = JSON.parse(data)
