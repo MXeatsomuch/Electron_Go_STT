@@ -4,6 +4,7 @@ var fs = require('fs')
 var log = require('log4node')
 const recorder = require('node-record-lpcm16');
 const { start } = require('repl');
+const { info } = require('console');
 
 // 系统配置
 const config = {
@@ -142,6 +143,7 @@ async function startRealtimeRecording(event) {
           event.reply('realtime-status-update', `error code:${res.code} desc:${res.desc}`)
           break
         case 'started':
+          let count = 1;
           event.reply('realtime-status-update', '连接成功，开始录音');
           console.log('开始录音并发送音频流');
           // 开始录音
@@ -166,6 +168,7 @@ async function startRealtimeRecording(event) {
                 const chunkToSend = buffer.subarray(nextSendPosition, nextSendPosition + chunkSize);
                 ws.send(chunkToSend);
                 nextSendPosition += chunkSize;
+                console.log(' 发送音频流: ', count++)
               }
             }
           });
@@ -174,15 +177,11 @@ async function startRealtimeRecording(event) {
           let data = JSON.parse(res.data)
           if (data.cn.st.type == 0){
             data.cn.st.rt.forEach(j => {
+              log.info(res.data)
               j.ws.forEach(k => {
                 k.cw.forEach(l => {
                   if(l.rl == curRole || l.rl == 0) { //没有切换角色
                     str += l.w
-                    if(l.wp == "p") { //遇到标点符号就返回
-                      log.info(str)
-                      event.reply('realtime-transcription-result', { type:'success', role: curRole, text: str})
-                      str = ""
-                    }
                   }
                   else {// 角色切换
                     if(str != "") {
@@ -196,6 +195,11 @@ async function startRealtimeRecording(event) {
                 })
               })
             })
+            if(str != "") {
+              log.info(str)
+              event.reply('realtime-transcription-result', { type:'success', role: curRole, text: str})
+              str = ""
+            }
           }
           break 
         }
