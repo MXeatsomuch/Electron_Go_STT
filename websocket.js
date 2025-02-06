@@ -67,6 +67,7 @@ async function startTranscription(filePath, onMessageCallback) {
         case 'started':
           log.info('started!')
           log.info('sid is:' + res.sid)
+          let count = 1;
           // 开始读取文件进行传输
           var readerStream = fs.createReadStream(filePath, {
             highWaterMark: config.highWaterMark
@@ -164,11 +165,13 @@ async function startRealtimeRecording(event) {
             if (!isRtPaused) {
               audioChunks.push(chunk);
               buffer = Buffer.concat([buffer, chunk]);
-              while (buffer.length >= nextSendPosition + chunkSize) {
-                const chunkToSend = buffer.subarray(nextSendPosition, nextSendPosition + chunkSize);
+              while (buffer.length >= chunkSize) {
+                const chunkToSend = buffer.slice(0, chunkSize);
                 ws.send(chunkToSend);
                 nextSendPosition += chunkSize;
-                console.log(' 发送音频流: ', count++)
+                // 移除已发送的数据块
+                buffer = buffer.slice(chunkSize);
+                //console.log(' 发送音频流: ', count++)
               }
             }
           });
@@ -201,6 +204,7 @@ async function startRealtimeRecording(event) {
               str = ""
             }
           }
+          if (data.cn.st.type == 0){ log.info("type is 0")}
           break 
         }
     });

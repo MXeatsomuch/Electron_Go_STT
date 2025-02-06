@@ -5,6 +5,7 @@ const fs = require('fs');
 const audioprocess = require('./audio-processing')
 const websocket = require('./websocket')
 const recorder = require('node-record-lpcm16');
+const { exec } = require("child_process");
 
 const options = {
   sampleRate: 16000, // 采样率16kHz
@@ -32,8 +33,25 @@ function createWindow() {
   });
 }
 
+
+function setEnvironmentVariables() {
+  // 动态获取 sox 的绝对路径
+  const soxPath = path.join(process.resourcesPath, "resource/sox-14.1.1/sox.exe");
+  console.log("Sox Path:", soxPath);
+  // 将 soxPath 所在目录添加到系统环境变量
+  const soxDir = path.dirname(soxPath); // 获取 sox.exe 的目录
+  exec(`setx PATH "%PATH%;${soxDir}"`, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error updating PATH: ${error.message}`);
+      return;
+    }
+    console.log("Successfully updated PATH:", stdout);
+  });
+}
+
 // app.whenReady().then(createWindow);
 app.whenReady().then(() => {
+  setEnvironmentVariables();
   createWindow();
 });
 

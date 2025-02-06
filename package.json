@@ -3,15 +3,44 @@
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
-    "start": "chcp 65001 && electron ."
+    "start": "chcp 65001 && electron .",
+    "build": "electron-builder"
   },
-  "author": "",
+  "author": "cmx",
   "license": "ISC",
-  "description": "",
+  "description": "Real-time speech transcription",
+  "build": {
+    "files": [
+      "main.js",
+      "audio-processing.js",
+      "websocket.js",
+      "preload.js",
+      "pages/",
+      "build/**/*"
+    ],
+    "extraFiles": [
+      {
+        "from": "resources/sox-14.4.1",
+        "to": "resources/sox-14.4.1",
+        "filter": ["**/*"]
+      }
+    ],
+    "nsis": {
+      "oneClick": true, 
+      "perMachine": true, 
+      "allowElevation": true, 
+      "allowToChangeInstallationDirectory": false ,
+      "include": "build/installer.nsh" 
+    }
+  },
   "dependencies": {
     "crypto-js": "^4.2.0",
     "log4node": "^0.1.6",
     "node-record-lpcm16": "^1.0.1",
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^23.0.0",
+    "electron-builder": "^25.1.8"
   }
 }
